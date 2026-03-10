@@ -1,21 +1,3 @@
-I know exactly why your README doesn't look like the example! There are two main reasons: one is a formatting error, and the other is just the visual structure.
-
-### 1. The Formatting Error (The ````markdown` tags)
-
-When you pasted your README into GitHub, you likely included the `markdown` at the top and ` ` ` at the bottom. In GitHub, if you wrap your text in those backticks, it turns the **entire document** into a giant grey code block instead of rendering the nice headers, bold text, and bullet points.
-
-**Fix:** You must delete `markdown` from line 1, and the closing ` ` ` at the very end of your file.
-
-### 2. The Structural Difference
-
-The Node.js SDK example looks very clean because it uses very short, punchy sentences and relies heavily on numbered code blocks rather than long paragraphs.
-
-I have rewritten your MT5 plugin README to perfectly match the visual aesthetic, spacing, and flow of that Node.js example.
-
-Copy the text below exactly as it is (do not include any ````markdown`wrappers) and paste it into your`README.md` file on GitHub:
-
----
-
 # TraderMade MT5 Data Bridge
 
 A professional-grade, hybrid market data bridge connecting the TraderMade API to MetaTrader 5 (MT5).
