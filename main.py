@@ -67,8 +67,8 @@ def print_symbol_guide():
 # ==========================================
 
 # Enter your TraderMade API keys here:
-REST_API_KEY = "-iz_0sc87HNWI41_5g_7"
-WS_API_KEY = "wsNMwEyEOp9038gU6kQQ"
+REST_API_KEY = "REST_API_KEY"
+WS_API_KEY = "WS_API_KEY"
 
 # Define the symbols you want to stream:
 SYMBOLS_TO_STREAM = ["EURUSD", "GBPUSD", "USA30"]
@@ -121,6 +121,9 @@ def fetch_data_chunked(symbol, start_time, end_time):
     all_quotes = []
     current_start = start_time
     
+    # ADD THIS: Add USD suffix for CFDs for the API request
+    api_symbol = symbol + "USD" if symbol in CFD_SYMBOLS else symbol
+    
     while current_start < end_time:
         current_end = current_start + timedelta(days=CHUNK_DAYS)
         if current_end > end_time: current_end = end_time
@@ -128,9 +131,9 @@ def fetch_data_chunked(symbol, start_time, end_time):
         str_start = current_start.strftime("%Y-%m-%d-%H:%M")
         str_end = current_end.strftime("%Y-%m-%d-%H:%M")
         
-        url = "https://marketdata.tradermade.com/api/v1/timeseries"
+        url = "https://marketdata.tradermade.com/api/v1/timeseries-beta"
         params = {
-            "api_key": REST_API_KEY, "currency": symbol, "format": "records",
+            "api_key": REST_API_KEY, "currency": api_symbol, "format": "records", # USE api_symbol HERE
             "start_date": str_start, "end_date": str_end, 
             "interval": INTERVAL, "period": PERIOD
         }
@@ -201,17 +204,28 @@ def fetch_and_inject_history(symbol):
     
     for quote in quotes_to_inject:
         try:
-            # ---> THE MISSING TIMEZONE FIX IS RESTORED HERE <---
-            dt_obj = datetime.strptime(quote['date'], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+            date_str = quote['date']
+            
+            # THE BULLETPROOF FIX: Handle all weird TraderMade date formats
+            if len(date_str) == 10: 
+                # If it's just "YYYY-MM-DD", add midnight
+                date_str += " 00:00:00"
+            elif len(date_str) == 16:
+                # If it's "YYYY-MM-DD HH:MM" (missing seconds), add seconds
+                date_str += ":00"
+                
+            dt_obj = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
             ts = int(dt_obj.timestamp())
             o, h, l, c = quote['open'], quote['high'], quote['low'], quote['close']
             payload = f"R,{symbol},{ts},{o},{h},{l},{c}|"
             mt5_conn.sendall(payload.encode('utf-8'))
             injected_count += 1
+            
         except (ConnectionAbortedError, ConnectionResetError, BrokenPipeError):
             raise Exception("MT5_DISCONNECTED")
-        except Exception:
-            pass
+        except Exception as e:
+            # THIS IS CRITICAL: Print the error so we know if it fails!
+            print(f"[!] Skipped bad candle for {symbol}: {e} | Data: {quote}")
 
     print(f"✅ SUCCESS! Injected {injected_count} historical candles for {symbol}.")
     with open(STATE_FILE, "w") as f:
